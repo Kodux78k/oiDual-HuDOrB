@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>DUAL // C0RE [SECURE]</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#030406">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- CORE STYLES --- */
+    :root {
+      --bg-deep: #050507; --bg-grid: #0a0a0f;
+      --glass-surface: rgba(20, 20, 26, 0.75); 
+      --glass-highlight: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --neon-cyan: #00f2ff; --neon-cyan-dim: rgba(0, 242, 255, 0.15);
+      --neon-purple: #bd00ff; --neon-green: #23ac51; --neon-red: #ef4444; --neon-orange: #f97316;
+      --text-main: #f1f5f9; --text-muted: #71717a;
+      --ease-elastic: cubic-bezier(0.34, 1.3, 0.64, 1); 
+      --ease-smooth: cubic-bezier(0.23, 1, 0.32, 1);
+      --radius-sm: 8px; --radius-md: 16px; --radius-lg: 24px; --radius-xl: 32px;
+      --font-ui: 'Montserrat', sans-serif; --font-code: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      margin: 0; padding: env(safe-area-inset-top) 20px 20px 20px; min-height: 100vh;
+      background-color: var(--bg-deep); color: var(--text-main); font-family: var(--font-ui); overflow-x: hidden;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px), radial-gradient(circle at 15% 50%, rgba(189, 0, 255, 0.12) 0%, transparent 40%), radial-gradient(circle at 85% 30%, rgba(0, 242, 255, 0.1) 0%, transparent 40%);
+      background-size: 40px 40px, 40px 40px, 100% 100%, 100% 100%; background-attachment: fixed;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+    .flex-center { display: flex; align-items: center; justify-content: center; }
+    .flex-between { display: flex; align-items: center; justify-content: space-between; }
+    .hidden { display: none !important; }
+    
+    /* Layout */
+    .layout { width: 100%; max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 360px 1fr; gap: 30px; align-items: start; transition: all 0.6s var(--ease-elastic); }
+    .layout.fusion-mode { grid-template-columns: 1fr; max-width: 720px; }
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+
+    /* Cards */
+    .glass-panel { background: var(--glass-surface); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid var(--glass-border); box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+    
+    .fusion-card { 
+      position: sticky; top: 20px; border-radius: var(--radius-xl); padding: 24px; 
+      transition: all 0.5s var(--ease-elastic); display: flex; flex-direction: column; gap: 20px; 
+      z-index: 100; border-top: 1px solid rgba(255,255,255,0.12); 
+    }
+    .fusion-card.active-glow { box-shadow: 0 0 60px rgba(189, 0, 255, 0.15); border-color: rgba(189, 0, 255, 0.4); }
+    .fusion-card.raw-mode { box-shadow: 0 0 50px rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); }
+    .layout.fusion-mode .fusion-card { position: relative; top: 0; margin-bottom: 24px; border-color: var(--neon-cyan); }
+    
+    /* Header */
+    .card-header { display: flex; align-items: center; gap: 16px; cursor: pointer; user-select: none; }
+    .avatar-ring { width: 56px; height: 56px; border-radius: 50%; background: conic-gradient(from 0deg, var(--neon-cyan), var(--neon-purple), var(--neon-cyan)); padding: 2px; flex-shrink: 0; animation: spin 12s linear infinite; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .avatar-inner { width: 100%; height: 100%; background: #08080a; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+    
+    .header-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+    .brand { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; color: #fff; line-height: 1.1; }
+    .status-label { font-size: 0.65rem; color: var(--neon-cyan); letter-spacing: 2px; text-transform: uppercase; font-family: var(--font-code); margin-top: 4px; display:flex; align-items:center; gap:6px; opacity: 0.9; }
+
+    /* Controls */
+    .fusion-controls { display: flex; gap: 6px; }
+    .ctrl-btn { width: 34px; height: 34px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #a1a1aa; cursor: pointer; transition: all 0.3s var(--ease-smooth); }
+    .ctrl-btn:hover { background: rgba(255,255,255,0.1); color: #fff; transform: translateY(-2px); }
+    .ctrl-btn.active { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan-dim); }
+    .ctrl-btn.raw { background: rgba(239,68,68,0.15); color: var(--neon-red); border-color: rgba(239,68,68,0.3); box-shadow: 0 0 15px rgba(239,68,68,0.15); }
+    
+    .recursive-block { overflow: hidden; max-height: 0; opacity: 0; transform: translateY(-10px); transition: all 0.4s var(--ease-smooth); display: flex; flex-direction: column; gap: 12px; }
+    .fusion-card.open .recursive-block { max-height: 600px; opacity: 1; transform: translateY(0); padding-top: 20px; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+
+    /* Inputs & Terminal */
+    label { font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+    .cyber-input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 12px 16px; color: #fff; font-family: var(--font-code); font-size: 0.8rem; transition: 0.3s; }
+    .cyber-input:focus { border-color: var(--neon-purple); background: rgba(0,0,0,0.5); box-shadow: 0 0 15px rgba(189, 0, 255, 0.15); }
+    
+    .terminal-window { background: #08080a; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.08); padding: 12px; position: relative; overflow: hidden; }
+    #asciiDisplay { font-family: var(--font-code); font-size: 0.6rem; color: #71717a; line-height: 1.4; white-space: pre; position: relative; z-index: 1; }
+    
+    /* Vault/Content */
+    .master-card { border-radius: var(--radius-lg); margin-bottom: 20px; overflow: hidden; position: relative; transition: all 0.3s var(--ease-smooth); }
+    .master-card.expanded { border-color: var(--neon-purple); box-shadow: 0 10px 50px rgba(0,0,0,0.5); background: rgba(25, 25, 30, 0.95); }
+    
+    .vault-header { padding: 20px 24px; cursor: pointer; }
+    .card-title { font-weight: 700; font-size: 1rem; color: #fff; margin-bottom: 6px; display: block; }
+    .card-meta { font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-code); gap: 12px; }
+    .tag-badge { background: rgba(255,255,255,0.06); padding: 4px 8px; border-radius: 6px; color: var(--neon-cyan); font-weight: 700; font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.05); }
+    
+    .dock { gap: 8px; }
+    .ico { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.03); color: #94a3b8; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+    .ico:hover { background: rgba(255,255,255,0.1); color: #fff; transform: scale(1.05); }
+    .ico-del:hover { background: rgba(239,68,68,0.2); color: var(--neon-red); }
+
+    .content-box { max-height: 0; overflow: hidden; opacity: 0; transition: all 0.5s var(--ease-smooth); background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.06); }
+    .master-card.expanded .content-box { max-height: 1000px; opacity: 1; padding: 24px; }
+    .code-area { width: 100%; background: #0b0b0e; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 20px; color: #e4e4e7; font-family: var(--font-code); font-size: 0.85rem; line-height: 1.6; min-height: 140px; resize: vertical; display: block; }
+    
+    /* Filters & Buttons */
+    .nav-row { margin-bottom: 25px; gap: 15px; flex-wrap: wrap; }
+    .search-wrap { flex: 1; min-width: 200px; position: relative; }
+    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .search-input { padding-left: 40px; border-radius: 50px; }
+    
+    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
+    .filter-pill { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: var(--text-muted); padding: 8px 18px; border-radius: 50px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: 0.3s; white-space: nowrap; }
+    .filter-pill.active { background: var(--neon-cyan); color: #000; border-color: var(--neon-cyan); box-shadow: 0 0 15px var(--neon-cyan-dim); }
+    
+    .btn-main { height: 48px; border-radius: var(--radius-md); border: none; font-weight: 800; cursor: pointer; gap: 10px; transition: 0.3s; font-family: var(--font-ui); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn-main.primary { background: var(--neon-cyan); color: #050505; box-shadow: 0 4px 20px var(--neon-cyan-dim); }
+    .btn-main.primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--neon-cyan-dim); background: #3ff6ff; }
+    .btn-main.ghost { background: rgba(255,255,255,0.06); color: #fff; }
+
+    /* Toasts, Modal, Runtime */
+    #toasterHub { position: fixed; top: 24px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 10px; z-index: 99999; width: 90%; max-width: 400px; pointer-events: none; }
+    .toast { background: #101012; border: 1px solid rgba(255,255,255,0.1); border-left: 3px solid var(--neon-green); color: #fff; padding: 16px; border-radius: var(--radius-md); box-shadow: 0 10px 40px rgba(0,0,0,0.6); animation: toastIn 0.4s var(--ease-elastic); pointer-events: all; cursor: pointer; }
+    .toast.console-log { border-left-color: var(--neon-purple); font-family: var(--font-code); }
+    @keyframes toastIn { 0% { opacity:0; transform: translateY(-20px); } 100% { opacity:1; transform: translateY(0); } }
+    
+    #immersiveLayer { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; transform: translateY(105%); transition: transform 0.6s var(--ease-elastic); }
+    #immersiveLayer.active { transform: translateY(0); }
+    .immersive-header { height: 64px; border-bottom: 1px solid #222; padding: 0 24px; background: #08080a; }
+    
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 20px; }
+    .modal-backdrop.active { display: flex; animation: fadeIn 0.3s ease; }
+    .modal { width: 100%; max-width: 460px; background: #101014; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: 32px; box-shadow: 0 0 100px rgba(0, 0, 0, 0.6); animation: scaleIn 0.3s var(--ease-elastic); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    h2 { margin: 0 0 24px 0; font-size: 1.5rem; color: #fff; font-weight: 800; }
+  </style>
+</head>
+<body>
+
+  <!-- TOASTER NOTIFICATIONS -->
+  <div id="toasterHub"></div>
+
+  <!-- IMMERSIVE RUNTIME LAYER -->
+  <div id="immersiveLayer">
+    <div class="immersive-header flex-between">
+      <div class="flex-center" style="gap:12px;">
+        <div style="width:8px; height:8px; border-radius:50%; background:var(--neon-green); box-shadow:0 0 10px var(--neon-green); animation: pulse 2s infinite;"></div>
+        <span style="font-family:var(--font-code); color:var(--neon-green); font-size:0.75rem; font-weight:bold;">RUNTIME // ENV</span>
+      </div>
+      <div class="flex-center" style="gap:10px;">
+          <button class="btn-main ghost" style="height:32px; font-size:0.65rem;" onclick="triggerSaveModalFromRuntime()">Snapshot</button>
+          <button class="btn-main ghost" style="height:32px; font-size:0.65rem; border-color:var(--neon-red); color:var(--neon-red);" onclick="closeRuntime()">Terminate</button>
+      </div>
+    </div>
+    <div id="runtimeContainer" style="flex:1; background: #fff;"></div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="layout" id="mainLayout">
+    <!-- LEFT PANEL: CONTROLS -->
+    <aside>
+      <div class="fusion-card glass-panel active-glow" id="mainCard">
+        <div class="card-header" onclick="toggleFusionMenu()">
+          <div class="avatar-ring flex-center"><div class="avatar-inner"><i data-lucide="cpu" size="24" color="#fff"></i></div></div>
+          <div class="header-info">
+            <div class="brand">CORE // FUSION</div>
+            <div class="status-label"><span>SYSTEM ONLINE</span></div>
+          </div>
+        </div>
+        
+        <div class="flex-between" style="padding: 0 4px;">
+            <div class="fusion-controls" onclick="event.stopPropagation()">
+              <div class="ctrl-btn flex-center" id="voiceBtn" onclick="toggleVoice()" title="Voice FX"><i data-lucide="mic" size="16"></i></div>
+              <div class="ctrl-btn flex-center" id="fusionBtn" onclick="toggleFusionMode()" title="Fusion Mode"><i data-lucide="layers" size="16"></i></div>
+              <div class="ctrl-btn flex-center" id="rawBtn" onclick="toggleRawMode()" title="RAW / SAFE"><i data-lucide="shield-check" id="rawIcon" size="16"></i></div>
+            </div>
+            <div class="ctrl-btn flex-center" onclick="toggleFusionMenu()"><i data-lucide="chevron-down" size="16" id="chevronIcon"></i></div>
+         </div>
+
+        <div class="recursive-block" id="block1">
+          <label>SYSTEM IDENTITY</label>
+          <input type="text" class="cyber-input" id="kernelId" value="ADMIN_NODE_01" oninput="updateAscii(); playSound('type')" spellcheck="false">
+          
+          <label style="margin-top:8px;">BUFFER UPLOAD</label>
+          <div style="display:flex; gap:10px;">
+            <input type="file" id="fileIn" style="display:none" onchange="handleFile(event)">
+            <button class="btn-main ghost flex-center" onclick="document.getElementById('fileIn').click(); playSound('click')"><i data-lucide="upload" size="16"></i></button>
+            <button class="btn-main primary flex-center" id="runBtn" disabled onclick="executeRuntime(); playSound('success')" style="flex:1"><i data-lucide="play" size="16"></i> INITIALIZE</button>
+          </div>
+          <div id="fileInfo" style="font-size:0.65rem; color:var(--neon-cyan); margin-top:0px; font-family:var(--font-code); min-height:15px; text-align:right;"></div>
+          
+          <div class="terminal-window">
+             <div id="asciiDisplay"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL: VAULT -->
+    <main>
+      <div class="nav-row flex-between">
+         <div class="search-wrap">
+            <i data-lucide="search" size="16" class="search-icon"></i>
+            <input type="text" class="cyber-input search-input" id="searchVault" placeholder="Pesquisar Vault..." oninput="renderVault()">
+         </div>
+         <div class="filter-bar">
+          <div class="filter-pill active" onclick="setFilter('ALL', this)">ALL</div>
+          <div class="filter-pill" onclick="setFilter('APP', this)">APPS</div>
+          <div class="filter-pill" onclick="setFilter('CODE', this)">CODE</div>
+          <div class="filter-pill" onclick="setFilter('DOC', this)">DOCS</div>
+        </div>
+      </div>
+
+      <div class="master-card glass-panel" id="creatorCard">
+        <div class="vault-header flex-between" onclick="toggleCreator()">
+          <div>
+            <span class="card-title" style="color:var(--neon-orange)">⚡ CODE INJECTOR</span>
+            <div class="card-meta flex-center">Create new stack entry</div>
+          </div>
+          <div class="dock flex-center">
+             <button class="ico flex-center" onclick="pasteClip(event)" title="Colar"><i data-lucide="clipboard" size="18"></i></button>
+             <button class="ico flex-center" id="creatorChevron"><i data-lucide="chevron-down" size="18"></i></button>
+          </div>
+        </div>
+        <div class="content-box">
+          <textarea id="creatorContent" class="code-area" placeholder="// Cole seu código aqui..." style="margin-bottom:15px;"></textarea>
+          <div style="display:flex; gap:10px;">
+            <input id="creatorTag" class="cyber-input" style="flex:0.3" placeholder="TAG (ex: APP)">
+            <button class="btn-main primary flex-center" style="flex:0.7" onclick="saveCreator()">SAVE TO STACK</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="vaultList"></div>
+      <div style="height:120px;"></div>
+    </main>
+  </div>
+
+  <!-- SNAPSHOT MODAL -->
+  <div id="saveModal" class="modal-backdrop">
+    <div class="modal">
+      <h2>SNAPSHOT SAVE</h2>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div><label>FILENAME</label><input type="text" id="modalTitle" class="cyber-input" placeholder="Ex: Dashboard V1"></div>
+        <div><label>TAG CATEGORY</label><input type="text" id="modalTag" class="cyber-input" placeholder="APP"></div>
+        <div style="margin-top:12px; display:flex; gap:12px;">
+          <button class="btn-main ghost flex-center" onclick="closeSaveModal()" style="flex:1">CANCEL</button>
+          <button class="btn-main primary flex-center" onclick="confirmSaveModal()" style="flex:1">CONFIRM</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* --- AUDIO CORE --- */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const soundEnabled = true;
+    const playTone = (freq, type='sine', dur=0.1) => {
+      if(!soundEnabled) return;
+      if(audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + dur);
+    };
+    const sounds = {
+      hover: () => playTone(350, 'sine', 0.05), click: () => playTone(600, 'triangle', 0.1),
+      type: () => playTone(800, 'square', 0.02),
+      success: () => { playTone(400, 'sine', 0.2); setTimeout(()=> playTone(800, 'sine', 0.3), 100); },
+      error: () => { playTone(150, 'sawtooth', 0.3); setTimeout(()=> playTone(100, 'sawtooth', 0.3), 100); }
+    };
+    function playSound(type) { if(sounds[type]) sounds[type](); }
+
+    /* --- VOICE CORE --- */
+    let voiceEnabled = false;
+    const synth = window.speechSynthesis;
+    function toggleVoice() {
+      voiceEnabled = !voiceEnabled;
+      document.getElementById('voiceBtn').classList.toggle('active', voiceEnabled);
+      speak(voiceEnabled ? "Voice interface initialized." : "Voice terminating.");
+    }
+    function speak(text) {
+      if(!voiceEnabled) return;
+      if(synth.speaking) synth.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.pitch = 0.8; utter.rate = 1.2;
+      const v = synth.getVoices().find(v => v.name.includes("Google US English"));
+      if(v) utter.voice = v;
+      synth.speak(utter);
+    }
+
+    /* --- SECURITY & KERNEL LOGIC --- */
+    document.addEventListener("DOMContentLoaded", () => { if(window.lucide) lucide.createIcons(); });
+
+    let stacks = JSON.parse(localStorage.getItem('fusion_stacks_v13') || '[]');
+    let currentFilter = 'ALL';
+    let loadedContent = '';
+    let pendingModalContent = '';
+    let fusionMode = false;
+    let allowRawMode = false;
+
+    // SEC: Função de escape para prevenir XSS na UI
+    function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    
+    // SEC: Lista de permissões controlada
+    function safeAllowList(raw){
+      return raw ? 'microphone; camera; clipboard-read; clipboard-write; fullscreen' : '';
+    }
+
+    /* UI CONTROLLERS */
+    function toggleFusionMenu() {
+      playSound('click');
+      const card = document.getElementById('mainCard');
+      const isOpening = !card.classList.contains('open');
+      card.classList.toggle('open');
+      document.getElementById('chevronIcon').style.transform = isOpening ? 'rotate(180deg)' : 'rotate(0deg)';
+      if(isOpening) playSound('hover');
+    }
+
+    function toggleFusionMode() {
+      fusionMode = !fusionMode;
+      const layout = document.getElementById('mainLayout');
+      document.getElementById('fusionBtn').classList.toggle('active', fusionMode);
+      layout.classList.toggle('fusion-mode', fusionMode);
+      speak(fusionMode ? "Fusion layout active." : "Grid layout restored.");
+      showToast("Layout", fusionMode ? "Fusion Mode Active" : "Grid Mode Active", fusionMode ? "layers" : "grid");
+      updateAscii();
+    }
+
+    function updateAscii() {
+      const idRaw = document.getElementById('kernelId').value || 'GHOST';
+      const id = escapeHtml(idRaw.toUpperCase()); // FIX: XSS Prevented
+      const now = new Date();
+      const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const ascii = `
+ KERNEL v14.2 // STATUS: OK
+ --------------------------
+ USR : ${id}
+ CLK : ${time}
+ MEM : ${stacks.length} NODES
+ SEC : ${allowRawMode ? '<span style="color:var(--neon-red)">RAW_OPEN</span>' : '<span style="color:var(--neon-green)">SAFE_BOX</span>'}
+      `.trim();
+      document.getElementById('asciiDisplay').innerHTML = ascii;
+    }
+    
+    // File Handler HARDENED
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if(!file) return;
+      // SEC: Limite de 1MB
+      if (file.size > 1024 * 1024) {
+        playSound('error'); showToast("Error", "Max filesize 1MB exceeded.", "x-circle");
+        e.target.value = ''; return;
+      }
+      document.getElementById('fileInfo').innerText = `>> BUFF: ${escapeHtml(file.name)}`;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        loadedContent = ev.target.result;
+        document.getElementById('runBtn').disabled = false;
+        speak("Buffer loaded."); playSound('success');
+      };
+      reader.readAsText(file);
+    }
+
+    // Toggle Raw/Safe HARDENED
+    function toggleRawMode(e) {
+      if(e) e.stopPropagation();
+      const willEnable = !allowRawMode;
+      // SEC: Confirmação explicita
+      if (willEnable && !confirm("RAW MODE habilitará acesso a microfone/câmera. Continuar?")) return;
+      
+      allowRawMode = willEnable;
+      const icon = document.getElementById('rawIcon');
+      const rawBtn = document.getElementById('rawBtn');
+      const mainCard = document.getElementById('mainCard');
+
+      if(allowRawMode) {
+        icon.setAttribute('data-lucide', 'shield-off');
+        rawBtn.classList.add('raw');
+        mainCard.classList.add('raw-mode');
+        showToast("Warning", "RAW MODE: Sandbox weakened.", "alert-triangle");
+        speak("Raw mode engaged.");
+      } else {
+        icon.setAttribute('data-lucide', 'shield-check');
+        rawBtn.classList.remove('raw');
+        mainCard.classList.remove('raw-mode');
+        showToast("System", "SAFE MODE: Sandbox active.", "shield-check");
+        speak("Safe mode active.");
+      }
+      lucide.createIcons();
+      updateAscii();
+    }
+
+    /* RUNTIME ENGINE (SECURE) */
+    function executeRuntime(contentOverride) {
+      let content = contentOverride || loadedContent;
+      if(!content) { playSound('error'); return showToast("Error", "Empty buffer.", "x-circle"); }
+      if(content.length > 5000000) { playSound('error'); return showToast("Error", "Buffer too large.", "x-circle"); }
+
+      // FEATURE: Console Capture Bridge
+      // Injeta um script que captura console.log dentro do iframe e manda pro pai
+      const consoleBridge = `
+        <script>
+          (function(){
+            const oldLog = console.log;
+            console.log = function(...args){
+               oldLog.apply(console, args);
+               try { window.parent.postMessage({type:'console-log', msgs: args.map(String)}, '*'); } catch(e){}
+            };
+            window.onerror = function(msg){
+               try { window.parent.postMessage({type:'console-error', msgs: [msg]}, '*'); } catch(e){}
+            };
+          })();
+        <\/script>
+      `;
+      content = consoleBridge + content;
+      
+      const container = document.getElementById('runtimeContainer');
+      container.innerHTML = '';
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'width:100%; height:100%; border:none;';
+
+      // SEC: Sandbox SEMPRE ativo. 'allow' controla capabilities.
+      iframe.setAttribute('sandbox', 'allow-scripts allow-forms allow-modals');
+      
+      const allowAttr = safeAllowList(allowRawMode);
+      if (allowAttr) iframe.setAttribute('allow', allowAttr);
+
+      iframe.srcdoc = content;
+      container.appendChild(iframe);
+      document.getElementById('immersiveLayer').classList.add('active');
+      speak("Runtime execution started.");
+    }
+
+    function closeRuntime() {
+      document.getElementById('immersiveLayer').classList.remove('active');
+      playSound('click');
+      setTimeout(() => document.getElementById('runtimeContainer').innerHTML = '', 600);
+    }
+
+    /* VAULT & STACK OPERATIONS */
+    function toggleCreator() {
+      playSound('click');
+      const card = document.getElementById('creatorCard');
+      card.classList.toggle('expanded');
+      const chev = document.getElementById('creatorChevron');
+      chev.style.transform = card.classList.contains('expanded') ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
+
+    async function pasteClip(e) {
+      e.stopPropagation();
+      try {
+        const text = await navigator.clipboard.readText();
+        document.getElementById('creatorContent').value = text;
+        playSound('type');
+        if(!document.getElementById('creatorCard').classList.contains('expanded')) toggleCreator();
+      } catch(err) { showToast("Error", "Clipboard denied.", "lock"); }
+    }
+
+    function saveCreator() {
+      const content = document.getElementById('creatorContent').value;
+      const tag = document.getElementById('creatorTag').value || 'APP';
+      if(!content) return playSound('error');
+      addStack(content, tag);
+      document.getElementById('creatorContent').value = '';
+      toggleCreator();
+    }
+
+    function addStack(content, tag = 'APP', title = '') {
+      if(!title) {
+        const titleMatch = content.match(/<title>(.*?)<\/title>/i);
+        title = titleMatch ? titleMatch[1] : (tag + ' NODE ' + Math.floor(Math.random()*1000));
+      }
+      stacks.unshift({ id: Date.now(), title, content, tag: tag.toUpperCase(), date: new Date().toLocaleDateString('pt-BR') });
+      persistStacks();
+      renderVault();
+      speak("Node saved."); playSound('success');
+      showToast("Saved", title, "save");
+      updateAscii();
+    }
+
+    function renderVault() {
+      const list = document.getElementById('vaultList');
+      const search = document.getElementById('searchVault').value.toLowerCase();
+      
+      const filtered = stacks.filter(s => {
+        const matchTag = currentFilter === 'ALL' || s.tag === currentFilter;
+        const matchSearch = s.title.toLowerCase().includes(search) || s.tag.toLowerCase().includes(search);
+        return matchTag && matchSearch;
+      });
+      
+      if(filtered.length === 0) {
+        list.innerHTML = `<div class="flex-center" style="padding:60px; color:#3f3f46; font-weight:700; opacity:0.6;">NO DATA FOUND</div>`;
+        return;
+      }
+
+      list.innerHTML = filtered.map(s => `
+        <div class="master-card glass-panel" id="stack-${s.id}">
+          <div class="vault-header flex-between" onclick="toggleStack(${s.id})">
+            <div style="flex:1; overflow:hidden; padding-right:10px;">
+              <span class="card-title">${escapeHtml(s.title)}</span>
+              <div class="card-meta flex-center" style="justify-content:flex-start">
+                <span class="tag-badge">${escapeHtml(s.tag)}</span>
+                <span>${s.date}</span>
+              </div>
+            </div>
+            <div class="dock flex-center">
+              <button class="ico flex-center" style="color:var(--neon-cyan)" onclick="runFromStack(event, ${s.id})"><i data-lucide="play" size="16"></i></button>
+              <button class="ico flex-center" onclick="copyStack(event, ${s.id})"><i data-lucide="copy" size="16"></i></button>
+              <button class="ico flex-center ico-del" onclick="deleteStack(event, ${s.id})"><i data-lucide="trash-2" size="16"></i></button>
+            </div>
+          </div>
+          <div class="content-box">
+            <textarea class="code-area" readonly spellcheck="false" onclick="event.stopPropagation()">${escapeHtml(s.content)}</textarea>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function toggleStack(id) { playSound('click'); document.getElementById(`stack-${id}`)?.classList.toggle('expanded'); }
+    function runFromStack(e, id) { e.stopPropagation(); const s = stacks.find(x => x.id === id); if(s) executeRuntime(s.content); }
+    function copyStack(e, id) { e.stopPropagation(); const s = stacks.find(x => x.id === id); if(s) { navigator.clipboard.writeText(s.content); playSound('success'); showToast("Copied", "Data in clipboard.", "copy"); } }
+    function deleteStack(e, id) { e.stopPropagation(); if(!confirm("DELETE NODE?")) return; stacks = stacks.filter(x => x.id !== id); persistStacks(); renderVault(); playSound('error'); }
+    function setFilter(tag, el) { playSound('click'); currentFilter = tag; document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active')); if(el) el.classList.add('active'); renderVault(); }
+    function persistStacks() { localStorage.setItem('fusion_stacks_v13', JSON.stringify(stacks)); }
+
+    /* TOASTER & UTILS */
+    function showToast(title, msg, icon='info', isConsole=false) {
+      const hub = document.getElementById('toasterHub');
+      const t = document.createElement('div');
+      t.className = `toast flex-center ${isConsole ? 'console-log' : ''}`;
+      t.innerHTML = `<i data-lucide="${icon}" size="20"></i><div class="toast-content flex-center" style="align-items:flex-start; flex-direction:column;"><span class="toast-title">${title}</span><span class="toast-msg">${msg}</span></div>`;
+      t.onclick = () => { t.remove(); };
+      hub.appendChild(t);
+      if(window.lucide) lucide.createIcons();
+      setTimeout(() => { if(t.isConnected) t.remove(); }, 3500);
+    }
+
+    function triggerSaveModalFromRuntime() { playSound('click'); pendingModalContent = loadedContent; document.getElementById('modalTitle').value = ''; document.getElementById('saveModal').classList.add('active'); }
+    function closeSaveModal() { document.getElementById('saveModal').classList.remove('active'); }
+    function confirmSaveModal() {
+      const title = document.getElementById('modalTitle').value;
+      const tag = document.getElementById('modalTag').value || 'APP';
+      addStack(pendingModalContent, tag, title);
+      closeSaveModal();
+    }
+
+    document.addEventListener('mouseover', (e) => { if(e.target.tagName === 'BUTTON' || e.target.classList.contains('ico')) playSound('hover'); });
+    
+    // SEC: PostMessage Hardening + Console Logger
+    window.addEventListener('message', (ev) => {
+      // Nota: Em arquivo local (file://), origin pode ser null. Ajuste conforme deploy.
+      if (ev.origin !== 'null' && ev.origin !== window.location.origin) return; 
+
+      const d = ev.data;
+      if (!d || typeof d !== 'object') return;
+      
+      if (d.type === 'console-log') {
+         showToast("CONSOLE", d.msgs.join(' '), "terminal", true);
+      }
+      if (d.type === 'console-error') {
+         showToast("RUNTIME ERR", d.msgs.join(' '), "alert-circle", true);
+      }
+      // IndexRef boot handling (mantido do original patch)
+      if (d.type === 'boot-index') bootIndexRef(!!d.force);
+    }, false);
+
+    setInterval(updateAscii, 60000);
+    updateAscii();
+    renderVault();
+  </script>
+
+  <script>
+  (function(){
+    // Keep-alive loop for environment self-reference (Optional)
+    const INDEX_PATH = 'dual_monolith.html'; // Self-referential
+    let indexRefFrame = document.getElementById('index-ref-frame');
+    let bootTimer = null;
+
+    function createIndexRef() {
+      if (indexRefFrame) return indexRefFrame;
+      indexRefFrame = document.createElement('iframe');
+      indexRefFrame.id = 'index-ref-frame';
+      indexRefFrame.title = 'Index Reference';
+      indexRefFrame.src = INDEX_PATH + '?_ref=' + Date.now();
+      indexRefFrame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-9999;border:0;visibility:hidden;';
+      document.body.appendChild(indexRefFrame);
+      return indexRefFrame;
+    }
+
+    function bootIndexRef(forceReload = false) {
+      createIndexRef();
+      if (!forceReload) {
+        if (!indexRefFrame.src || !indexRefFrame.src.includes(INDEX_PATH)) {
+          indexRefFrame.src = INDEX_PATH + '?_ref=' + Date.now();
+        }
+        return;
+      }
+      try {
+        indexRefFrame.src = 'about:blank';
+        if (bootTimer) clearTimeout(bootTimer);
+        bootTimer = setTimeout(() => { indexRefFrame.src = INDEX_PATH + '?_r=' + Date.now(); }, 80);
+      } catch(e) { try { indexRefFrame.remove(); } catch(e){} indexRefFrame = null; createIndexRef(); }
+    }
+
+    window.bootIndexRef = bootIndexRef;
+    window.getIndexRefFrame = () => createIndexRef();
+
+    if (document.readyState === 'complete') bootIndexRef();
+    else document.addEventListener('DOMContentLoaded', () => bootIndexRef());
+  })();
+  </script>
+</body>
+</html>
+
+

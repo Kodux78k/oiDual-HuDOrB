@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>DUAL // MONOLITH · Navigator · Infodose</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#020202">
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Service Worker register will be attempted later -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="assets/icons/icon-192.png" type="image/png"/>
+
+  <style>
+    /* =========================
+       VARIABLES & BASE
+       ========================= */
+    :root{
+      /* Paleta DUAL / Integrada */
+      --bg-dark: #020202;
+      --bg-dark-2: #0a0a0c;
+      --glass: rgba(10,10,12,0.85);
+      --glass-border: rgba(255,255,255,0.08);
+
+      --accent-cyan: #00f2ff;
+      --accent-purple: #bd00ff;
+      --alert: #ff4d4d;
+      --gold: #ffd700;
+
+      --font-ui: 'Inter', sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
+
+      --ease-elastic: cubic-bezier(0.34,1.56,0.64,1);
+      --ease-smooth: cubic-bezier(0.23,1,0.32,1);
+    }
+
+    /* Global reset */
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent; outline: none;}
+    html,body{height:100%;width:100%;margin:0;padding:0;font-family:var(--font-ui);background:var(--bg-dark);color:#fff;overflow:hidden;}
+
+    /* =========================
+       AMBIENT LAYER (orb background)
+       ========================= */
+    .void-ambient{
+      position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:
+        radial-gradient(circle at 50% 120%, rgba(189,0,255,0.12), transparent 60%),
+        radial-gradient(circle at 50% -20%, rgba(0,242,255,0.06), transparent 60%);
+      transition:opacity 2s ease;
+    }
+
+    /* =========================
+       MONOLITH CARD
+       ========================= */
+    .monolith-wrapper {
+      position:relative; z-index:200; width:90%; max-width:980px; height:78vh; max-height:820px; margin:auto;
+      perspective:1000px; display:flex; align-items:center; justify-content:center; pointer-events:none;
+    }
+    .monolith {
+      width:100%; height:100%; background:var(--glass); border:1px solid var(--glass-border);
+      border-radius:28px; backdrop-filter:blur(36px); box-shadow:0 30px 120px rgba(0,0,0,0.85);
+      display:flex; flex-direction:column; overflow:hidden; transition:all 0.7s var(--ease-elastic);
+      opacity:0; transform: translateY(100px) scale(0.95) rotateX(6deg);
+    }
+    body.active .monolith { opacity:1; transform: translateY(0) scale(1) rotateX(0); pointer-events:all; }
+
+    .mono-header{ padding:20px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .brand{ font-weight:800; letter-spacing:1px; display:flex; gap:8px; align-items:center; font-size:0.95rem; }
+    .brand span{ color:var(--accent-cyan); font-weight:900; }
+    .status-badge{ font-family:var(--font-code); font-size:0.65rem; padding:6px 10px; border-radius:10px; background:rgba(255,255,255,0.04); color:#888; border:1px solid rgba(255,255,255,0.04); }
+
+    .mono-stage{ flex:1; padding:20px; display:flex; flex-direction:column; gap:14px; overflow:auto; position:relative; }
+
+    .drop-zone{
+      height:120px; border-radius:16px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      color:#9aa3ae; gap:8px; cursor:pointer; border:1px dashed rgba(255,255,255,0.04); background:rgba(0,0,0,0.12);
+      transition:0.2s;
+    }
+    .drop-zone:hover{ border-color:var(--accent-cyan); color:#fff; background:rgba(0,242,255,0.02); }
+    .action-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    .btn{ padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.05); background:rgba(255,255,255,0.02); color:#ddd; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .btn.primary{ background:#fff;color:#000;border:none; }
+    .stack-item{ background:rgba(255,255,255,0.03); padding:12px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); }
+
+    /* runtime layer (sandbox appFrame) */
+    .runtime-layer{ position:absolute; inset:0; background:#050505; z-index:50; display:flex; flex-direction:column; transform:translateY(100%); transition:0.45s var(--ease-smooth); }
+    .runtime-layer.visible{ transform:translateY(0); }
+    .runtime-bar{ height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 14px; background:#000; border-bottom:1px solid #111; }
+    .runtime-iframe{ flex:1; border:0; background:#fff; }
+
+    /* infodose pulse */
+    .infodose-pulse{ height:6px; width:100%; background:#111; border-radius:4px; overflow:hidden; margin-top:auto; opacity:0; transition:0.5s; }
+    body.infodose-linked .infodose-pulse{ opacity:1; }
+    .pulse-bar{ height:100%; width:50%; background:var(--accent-cyan); animation:scan 2s linear infinite; box-shadow:0 0 10px var(--accent-cyan); }
+    @keyframes scan{ 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+
+    /* orb control */
+    .orb-container{ position:fixed; bottom:40px; left:50%; transform:translateX(-50%); z-index:9000; transition:all 0.8s var(--ease-elastic); }
+    body.active .orb-container{ bottom:20px; transform:translateX(-50%) scale(0.86); }
+    .orb{ width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.08);box-shadow:0 0 30px rgba(0,242,255,0.07);cursor:pointer;backdrop-filter:blur(10px); }
+    .orb:hover{ border-color:var(--accent-cyan); box-shadow:0 0 50px rgba(0,242,255,0.22); transform:scale(1.05); }
+    .orb-core{ width:8px;height:8px;background:#fff;border-radius:50%; box-shadow:0 0 10px #fff; transition:0.3s; }
+    body.active .orb-core{ background:var(--accent-cyan); box-shadow:0 0 20px var(--accent-cyan); }
+    .orb-ring{ position:absolute; inset:-4px; border-radius:50%; border:1px solid transparent; border-top-color:var(--accent-cyan); opacity:0.55; animation:spin 4s linear infinite; }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+
+    /* =========================
+       NAVIGATOR LAYERS (from second file)
+       ========================= */
+    iframe#frame{ position:fixed; inset:0; width:100%; height:100%; border:0; background:#000; z-index:1; transition:opacity .28s ease; }
+    iframe#frame.hidden{ opacity:0; }
+
+    #themeToggle{ position: absolute; top:36px; left:50%; transform:translateX(-50%); width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:10001; font-size:16px; backdrop-filter: blur(6px); }
+    #themeToggle:hover{ box-shadow: 0 6px 24px rgba(0,0,0,0.25); }
+
+    .symbol-bar{ position:fixed; right:16px; top:44%; transform:translateY(-44%); display:flex; flex-direction:column; gap:12px; z-index:60; }
+    .symbol-button{ width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:var(--accent-cyan); display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter: blur(4px); }
+
+    .left-tools{ position:fixed; left:16px; top:28%; display:flex; flex-direction:column; gap:12px; z-index:70; }
+    .tool-btn{ width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--accent-cyan); }
+
+    .footer-dots{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:14px; z-index:120; }
+    .dot{ width:14px; height:14px; border-radius:50%; border:1px solid var(--accent-cyan); background:rgba(255,255,255,0.02); cursor:pointer; display:inline-block; }
+    .dot.main{ width:18px; height:18px; box-shadow:0 6px 20px rgba(0,242,255,0.06); }
+
+    #toast{ position:fixed; left:50%; top:12px; transform:translateX(-50%); padding:8px 12px; border-radius:8px; background:rgba(0,0,0,0.6); color:var(--accent-cyan); font-family:var(--font-code); z-index:200; display:none; pointer-events:none; }
+
+    #decoderBox{ position:fixed; left:50%; top:16%; transform:translateX(-50%); background:rgba(0,0,0,0.85); padding:12px; border-radius:12px; z-index:90; display:none; }
+    #decoderBox input{ padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:inherit; }
+
+    #pulsos-container{ position:fixed; left:50%; top:22%; transform:translateX(-50%); max-width:840px; width:86%; z-index:30; pointer-events:none; display:none; }
+    #pulsos{ pointer-events:auto; background:rgba(0,0,0,0.45); padding:8px; border-radius:10px; max-height:240px; overflow:auto; color:var(--accent-cyan); font-family:var(--font-code); font-size:13px; }
+
+    /* responsive */
+    @media(max-width:900px){
+      .monolith-wrapper{ width:94%; height:80vh; }
+      .symbol-bar{ right:8px; top:38%; }
+      .left-tools{ left:8px; }
+      #themeToggle{ top:14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="void-ambient" aria-hidden="true"></div>
+
+  <!-- MAIN NAVIGATOR IFRAME (background navigator) -->
+  <iframe id="frame" src="./index.html" title="Dual.Navigator frame" aria-hidden="false"></iframe>
+
+  <!-- THEME TOGGLE -->
+  <button id="themeToggle" title="Alternar tema: Dark / Light / Medium / Vibe" aria-pressed="false" aria-label="Alternar tema">
+    <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+  </button>
+
+  <!-- SYMBOL BAR (right) -->
+  <div class="symbol-bar" aria-hidden="true">
+    <button class="symbol-button" data-url="about:blank" title="Blank">Φ</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/oiDual-Vivivi-1/" title="Vivivi">꩜</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/oiDual-KxT/" title="KxT">◌</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/NosSolar-dualInfodose/" title="Nosolar">☼</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/DualHubjhbarros/" title="JHBarros">◑</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/info-Doc/index.html" title="InfoDoc">◘</button>
+    <button class="symbol-button" data-url="https://kodux78k.github.io/DualInfodose-VirgemHuB/index.html" title="Atelie">◧</button>
+  </div>
+
+  <!-- LEFT TOOLS -->
+  <div class="left-tools" role="toolbar" aria-label="Ferramentas">
+    <button id="uploadBtn" class="tool-btn" title="Upload .html" aria-label="Upload HTML"><i class="fa-solid fa-file-import" aria-hidden="true"></i></button>
+    <input id="uploadHTML" type="file" accept=".html" style="display:none" aria-hidden="true">
+    <button id="remoteBtn" class="tool-btn" title="Abrir URL remota" aria-label="Abrir remoto"><i class="fa-solid fa-globe" aria-hidden="true"></i></button>
+    <button id="decoderToggle" class="tool-btn" title="Decoder" aria-label="Abrir decodificador"><i class="fa-solid fa-key" aria-hidden="true"></i></button>
+    <button id="ritualBtn" class="tool-btn" title="Ritual Visual" aria-label="Ritual Visual"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+  </div>
+
+  <!-- FOOTER DOTS -->
+  <div class="footer-dots" aria-hidden="true">
+    <div id="dot-index" class="dot small" title="Indexer (carrega index.html)"></div>
+    <div id="dot-base" class="dot main" title="Base Ritual (reset sem trocar src)"></div>
+    <div id="dot-last" class="dot small" title="Última página (last page)"></div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" aria-live="polite" role="status"></div>
+
+  <!-- DECODER BOX -->
+  <div id="decoderBox" aria-hidden="true">
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input id="codeInput" placeholder="Selo (ex: DUAL)" aria-label="Selo" />
+      <button id="decodeBtn" class="tool-btn" title="Abrir selo" aria-label="Abrir selo">Abrir</button>
+      <button id="closeDecoder" class="tool-btn" title="Fechar decodificador" aria-label="Fechar decodificador">✖</button>
+    </div>
+  </div>
+
+  <!-- PULSES (debug logs) -->
+  <div id="pulsos-container" aria-hidden="true">
+    <div id="pulsos" role="log" aria-live="polite"></div>
+  </div>
+
+  <!-- MONOLITH (centered card) -->
+  <div class="monolith-wrapper" role="region" aria-label="Monólito">
+    <div class="monolith" role="application" aria-hidden="true">
+      <div class="mono-header">
+        <div class="brand"><i data-lucide="layers" size="18"></i> DUAL <span>// MONO</span></div>
+        <div class="status-badge" id="sysStatus">STANDBY</div>
+      </div>
+
+      <div class="mono-stage">
+        <div style="font-size:0.82rem;color:#9aa3ae">Sistemas Nominais. Selecione o vetor de entrada.</div>
+
+        <div class="drop-zone" id="dropZone" title="Clique para carregar um stack (.html, .json)" role="button" aria-label="Carregar Stack">
+          <i data-lucide="upload-cloud" size="24"></i>
+          <span style="font-weight:700">Carregar Stack / Módulo</span>
+          <span id="fileName" style="font-size:0.62rem;opacity:0.6">.HTML, .JSON, .JS</span>
+          <input type="file" id="fileInput" hidden accept=".html,.json,.js" />
+        </div>
+
+        <div class="action-grid">
+          <button class="btn" id="infodoseBtn"><i data-lucide="zap" size="14"></i> Infodose</button>
+          <button class="btn" id="artRaskBtn"><i data-lucide="cpu" size="14"></i> ArtRask</button>
+        </div>
+
+        <div id="stackList" style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
+
+        <div class="infodose-pulse"><div class="pulse-bar"></div></div>
+      </div>
+
+      <div class="runtime-layer" id="runtime">
+        <div class="runtime-bar">
+          <span style="font-family:var(--font-code); font-size:0.78rem; color:var(--accent-cyan)">RUNTIME // SANDBOX</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn" style="height:32px;padding:6px" id="openInFrameBtn" title="Abrir em frame">Abrir no Frame</button>
+            <button class="btn" style="height:32px;padding:6px" id="closeRuntimeBtn" aria-label="Fechar runtime"><i data-lucide="x" size="16"></i></button>
+          </div>
+        </div>
+        <iframe class="runtime-iframe" id="appFrame" sandbox="allow-scripts allow-forms allow-modals allow-same-origin"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightweight modal web-component for previewing remote/local pages -->
+  <script>
+    class MyFrameLoader extends HTMLElement {
+      constructor(){
+        super();
+        this.attachShadow({mode:'open'});
+        this.shadowRoot.innerHTML = `
+          <style>
+            :host{all:initial}
+            .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:99999}
+            .box{width:92%;height:86%;background:#071017;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+            .top{display:flex;justify-content:flex-end;padding:8px;background:linear-gradient(to bottom, rgba(255,255,255,0.02), transparent)}
+            button{background:transparent;border:0;color:#fff;font-size:18px;cursor:pointer;padding:6px}
+            iframe{flex:1;border:0;width:100%;height:100%;background:#000}
+          </style>
+          <div class="overlay" part="overlay">
+            <div class="box" part="box">
+              <div class="top"><button class="close" title="Fechar modal">✖</button></div>
+              <iframe sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+            </div>
+          </div>
+        `;
+        this.iframe = this.shadowRoot.querySelector('iframe');
+        this.shadowRoot.querySelector('.close').onclick = ()=> this.remove();
+      }
+      set src(v){ this.iframe.src = v; }
+    }
+    customElements.define('my-frame-loader', MyFrameLoader);
+  </script>
+
+  <script>
+    /* =========================
+       Storage keys & mappings
+       ========================= */
+    const STACKS_KEY = 'dual_mono_stacks';
+    const STORAGE_KEY = 'dual_last';
+    const THEME_KEY = 'infodoseTheme';
+    const CODE_MAP = {
+      "DUAL":"menu.html",
+      "KBX":"menu-x-1.html",
+      "ATVR":"render-response.html",
+      "337":"KOBLLUX_MetaLux_CLEANED.html"
+    };
+
+    /* =========================
+       DOM refs
+       ========================= */
+    const lucideReady = () => window.lucide && typeof window.lucide.createIcons === 'function';
+    const frame = document.getElementById('frame');
+    const themeBtn = document.getElementById('themeToggle');
+    const uploadInput = document.getElementById('uploadHTML');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const remoteBtn = document.getElementById('remoteBtn');
+    const ritualBtn = document.getElementById('ritualBtn');
+    const decoderToggle = document.getElementById('decoderToggle');
+    const decoderBox = document.getElementById('decoderBox');
+    const decodeBtn = document.getElementById('decodeBtn');
+    const closeDecoder = document.getElementById('closeDecoder');
+    const codeInput = document.getElementById('codeInput');
+    const pulsos = document.getElementById('pulsos');
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    const stackList = document.getElementById('stackList');
+    const sysStatus = document.getElementById('sysStatus');
+    const runtime = document.getElementById('runtime');
+    const appFrame = document.getElementById('appFrame');
+    const infodoseBtn = document.getElementById('infodoseBtn');
+    const artRaskBtn = document.getElementById('artRaskBtn');
+    const openInFrameBtn = document.getElementById('openInFrameBtn');
+    const closeRuntimeBtn = document.getElementById('closeRuntimeBtn');
+    const toast = document.getElementById('toast');
+
+    /* =========================
+       UTILs: toast & log
+       ========================= */
+    function showToast(msg, ms=900){
+      toast.textContent = msg; toast.style.display='block';
+      clearTimeout(showToast._t); showToast._t = setTimeout(()=> toast.style.display='none', ms);
+    }
+    function logMistico(msg){
+      if(!pulsos) return;
+      const el = document.createElement('div'); el.className='debug'; el.textContent = "◉ " + msg;
+      pulsos.prepend(el); while(pulsos.children.length>80) pulsos.removeChild(pulsos.lastChild);
+      // reveal pulses container briefly
+      const container = document.getElementById('pulsos-container');
+      if(container){ container.style.display='block'; clearTimeout(container._t); container._t = setTimeout(()=> container.style.display='none', 2400); }
+      console.log('[DUAL]', msg);
+    }
+
+    /* =========================
+       THEME handling
+       ========================= */
+    function applyTheme(theme){
+      document.body.classList.remove('light','medium','vibe');
+      if(theme && theme !== 'dark') document.body.classList.add(theme);
+      themeBtn.title = `Tema atual: ${String(theme).toUpperCase()}`;
+      themeBtn.setAttribute('aria-pressed', String(theme !== 'dark'));
+      themeBtn.style.transform = "translateX(-50%) scale(0.94)";
+      setTimeout(()=> themeBtn.style.transform = "translateX(-50%) scale(1)", 200);
+    }
+    function toggleTheme(){
+      const order = ['dark','light','medium','vibe'];
+      const cur = localStorage.getItem(THEME_KEY) || 'dark';
+      const next = order[(order.indexOf(cur) + 1) % order.length];
+      localStorage.setItem(THEME_KEY, next); applyTheme(next); showToast('Tema → ' + next, 800);
+    }
+    (function initTheme(){ const saved = localStorage.getItem(THEME_KEY) || 'dark'; applyTheme(saved); themeBtn.addEventListener('click', toggleTheme); })();
+
+    /* =========================
+       NAVIGATOR interactions
+       ========================= */
+    function setFrameSrc(url, persist=true){
+      if(!url) return;
+      let final = url;
+      frame.classList.add('hidden');
+      setTimeout(()=>{ frame.src = final; frame.onload = ()=> frame.classList.remove('hidden'); }, 220);
+      if(persist){ try{ localStorage.setItem(STORAGE_KEY, final); }catch(e){} }
+      showToast('Carregado → ' + (final.length>48 ? final.slice(0,44)+'…' : final));
+    }
+    document.querySelectorAll('.symbol-button').forEach(btn=>{
+      const url = btn.dataset.url;
+      btn.addEventListener('click', ()=> setFrameSrc(url, true));
+      btn.addEventListener('contextmenu', e=>{ e.preventDefault(); window.open(url,'_blank'); });
+    });
+
+    uploadBtn.addEventListener('click', ()=> uploadInput.click());
+    uploadInput.addEventListener('change', e=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f) return;
+      if(!f.name.endsWith('.html')) return alert('Selecione um arquivo .html');
+      const r = new FileReader();
+      r.onload = ev=>{
+        const blob = new Blob([ev.target.result], {type:'text/html'});
+        const url = URL.createObjectURL(blob);
+        const modal = document.createElement('my-frame-loader');
+        modal.src = url;
+        document.body.appendChild(modal);
+        logMistico('Preview local: ' + f.name);
+      };
+      r.readAsText(f);
+    });
+
+    remoteBtn.addEventListener('click', ()=>{
+      const url = prompt('Cole a URL do componente remoto:');
+      if(!url) return;
+      const modal = document.createElement('my-frame-loader');
+      modal.src = url;
+      document.body.appendChild(modal);
+      logMistico('Aberto remoto: ' + url);
+    });
+
+    ritualBtn.addEventListener('click', ()=> { showToast('Ritual visual ativado', 900); logMistico('Ritual acionado'); });
+
+    document.getElementById('dot-index').addEventListener('click', ()=> { showToast('Indexer → index.html', 800); setFrameSrc('index.html', true); });
+    document.getElementById('dot-base').addEventListener('click', ()=> { showToast('Base Ritual (reset)', 700); try{ frame.contentWindow.postMessage({type:'DUAL_RESET_STATE'}, '*'); }catch(e){} frame.classList.add('hidden'); setTimeout(()=>frame.classList.remove('hidden'), 160); logMistico('Base reset enviada via postMessage'); });
+    document.getElementById('dot-last').addEventListener('click', ()=> { const last = localStorage.getItem(STORAGE_KEY); if(last){ setFrameSrc(last, true); } else showToast('Nenhuma última página salva', 900); });
+
+    // preserve last page on load of iframe
+    frame.addEventListener('load', ()=>{
+      try {
+        const href = frame.contentWindow && frame.contentWindow.location && frame.contentWindow.location.href;
+        if(href && href.indexOf(location.origin) === 0) localStorage.setItem(STORAGE_KEY, href);
+        else localStorage.setItem(STORAGE_KEY, frame.src);
+      } catch(e){ try{ localStorage.setItem(STORAGE_KEY, frame.src); }catch(_){} }
+    });
+
+    // postMessage pulses
+    window.addEventListener('message', e=>{
+      if(e.data?.type === 'iframeClick'){ const x = e.data.x, y = e.data.y; logMistico('Pulso do iframe em ' + x + ',' + y); }
+    });
+
+    // keyboard shortcuts
+    document.addEventListener('keydown', (ev)=>{
+      if (ev.key === 't' && (ev.ctrlKey || ev.metaKey)){ ev.preventDefault(); decoderBox.style.display = decoderBox.style.display === 'block' ? 'none' : 'block'; }
+      if (ev.key.toLowerCase() === 't' && (ev.ctrlKey || ev.metaKey) && ev.shiftKey){ ev.preventDefault(); toggleTheme(); }
+    });
+
+    // decoder behavior
+    decoderToggle.addEventListener('click', ()=> { const showing = decoderBox.style.display === 'block'; decoderBox.style.display = showing ? 'none' : 'block'; decoderBox.setAttribute('aria-hidden', String(showing)); });
+    closeDecoder.addEventListener('click', ()=> decoderBox.style.display = 'none');
+    decodeBtn.addEventListener('click', ()=>{
+      const code = (codeInput.value || '').trim().toUpperCase();
+      if(!code) return alert('Digite o selo');
+      const dest = CODE_MAP[code];
+      if(dest){
+        const modal = document.createElement('my-frame-loader'); modal.src = dest; document.body.appendChild(modal);
+        decoderBox.style.display = 'none';
+        logMistico('Selo válido: ' + code + ' → ' + dest);
+        showToast('Selo → ' + code, 800);
+      } else { alert('Selo desconhecido.'); logMistico('Selo desconhecido: ' + code); }
+    });
+
+    /* =========================
+       MONOLITH System (stacks, runtime)
+       ========================= */
+    const sys = {
+      state: { active:false, processing:false, infodose:false, stacks:[] },
+
+      init(){
+        if(lucideReady()) lucide.createIcons();
+        this.log('System Inicializado');
+        // load stacks
+        try {
+          const saved = localStorage.getItem(STACKS_KEY);
+          if(saved) this.state.stacks = JSON.parse(saved);
+        } catch(e){}
+        this.renderStacks();
+        // init drop zone
+        dropZone.addEventListener('click', ()=> fileInput.click());
+        fileInput.addEventListener('change', (ev)=> this.handleFile(ev.target));
+        dropZone.addEventListener('dragover', (ev)=>{ ev.preventDefault(); dropZone.style.borderColor = 'var(--accent-cyan)'; });
+        dropZone.addEventListener('dragleave', ()=> { dropZone.style.borderColor = 'rgba(255,255,255,0.04)'; });
+        dropZone.addEventListener('drop', (ev)=>{ ev.preventDefault(); dropZone.style.borderColor = 'rgba(255,255,255,0.04)'; const f = ev.dataTransfer.files && ev.dataTransfer.files[0]; if(f){ const fr = { files: [f] }; this.handleFile(fr); }});
+      },
+
+      toggleSystem(){ this.state.active = !this.state.active; document.body.classList.toggle('active', this.state.active); if(this.state.active){ this.speak('Monólito Ativo.'); this.status('READY'); } else this.status('STANDBY'); },
+
+      status(msg){ sysStatus.innerText = msg; },
+
+      log(msg){ console.log('[DUAL]', msg); },
+
+      speak(text){ if(!window.speechSynthesis) return; const u = new SpeechSynthesisUtterance(text); u.lang='pt-BR'; u.rate=1.05; window.speechSynthesis.speak(u); },
+
+      handleFile(input){
+        const file = (input.files && input.files[0]) || input;
+        if(!file) return;
+        this.status('READING...');
+        document.body.classList.add('processing');
+        fileName.innerText = file.name || 'arquivo';
+        const reader = new FileReader();
+        reader.onload = (e)=>{ this.createStack(file.name, e.target.result); document.body.classList.remove('processing'); this.status('READY'); this.speak('Arquivo integrado.'); };
+        reader.readAsText(file);
+      },
+
+      createStack(title, content){
+        const stack = { id: Date.now(), title: title, content: content, type: 'html' };
+        this.state.stacks.unshift(stack);
+        this.save(); this.renderStacks();
+      },
+
+      renderStacks(){
+        stackList.innerHTML = '';
+        this.state.stacks.forEach(s=>{
+          const el = document.createElement('div'); el.className='stack-item';
+          el.innerHTML = `<div style="display:flex;align-items:center;gap:10px"><i data-lucide="package" size="16"></i><span style="font-weight:700">${s.title}</span></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn" title="Run" onclick="event.stopPropagation(); sys.runStack(${s.id})"><i data-lucide="play" size="12"></i></button>
+              <button class="btn" style="border-color:var(--alert);color:var(--alert)" title="Delete" onclick="event.stopPropagation(); sys.deleteStack(${s.id})"><i data-lucide="trash-2" size="12"></i></button>
+            </div>`;
+          el.onclick = ()=> this.runStack(s.id);
+          stackList.appendChild(el);
+        });
+        if(lucideReady()) lucide.createIcons();
+      },
+
+      save(){ try{ localStorage.setItem(STACKS_KEY, JSON.stringify(this.state.stacks)); }catch(e){} },
+
+      deleteStack(id){ if(!confirm('Desintegrar stack?')) return; this.state.stacks = this.state.stacks.filter(s=> s.id !== id); this.save(); this.renderStacks(); },
+
+      runStack(id){
+        const stack = this.state.stacks.find(s=> s.id === id);
+        if(!stack) return;
+        // basic safety: using srcdoc (note: DOMPurify recommended)
+        appFrame.srcdoc = stack.content;
+        runtime.classList.add('visible');
+        this.status('RUNTIME ACTIVE');
+        logMistico('Stack rodando: ' + stack.title);
+      },
+
+      closeRuntime(){ runtime.classList.remove('visible'); setTimeout(()=>{ appFrame.srcdoc = ''; this.status('READY'); }, 500); },
+
+      toggleInfodose(){ this.state.infodose = !this.state.infodose; document.body.classList.toggle('infodose-linked', this.state.infodose); if(this.state.infodose){ this.speak('Infodose conectado.'); this.status('SYNCING STREAM'); } else this.status('READY'); },
+
+      toggleArtRask(){ alert('ArtRask Protocol: Waiting for neural link...'); logMistico('ArtRask placeholder'); }
+    };
+
+    // wire small buttons:
+    infodoseBtn.addEventListener('click', ()=> sys.toggleInfodose());
+    artRaskBtn.addEventListener('click', ()=> sys.toggleArtRask());
+    closeRuntimeBtn.addEventListener('click', ()=> sys.closeRuntime());
+    openInFrameBtn.addEventListener('click', ()=>{
+      // if appFrame has a document, ask to open its srcdoc in the main frame as blob
+      try {
+        const srcdoc = appFrame.srcdoc;
+        if(srcdoc && srcdoc.trim().length>20){
+          const blob = new Blob([srcdoc], {type:'text/html'}); const url = URL.createObjectURL(blob);
+          setFrameSrc(url, false);
+          showToast('Abrindo stack no frame (preview)', 1200);
+        } else {
+          showToast('Nada executando no runtime', 900);
+        }
+      } catch(e){ showToast('Erro ao abrir no frame', 1000); }
+    });
+
+    /* =========================
+       INIT
+       ========================= */
+    window.onload = ()=>{
+      sys.init();
+      // try register service worker
+      if('serviceWorker' in navigator){
+        try{
+          navigator.serviceWorker.register('./sw.js').then(()=> logMistico('Service Worker Registrado')).catch(()=>{/*silenciar*/});
+        }catch(e){}
+      }
+      logMistico('Dual.Navigator · Dual.Infodose inicializado');
+      const last = localStorage.getItem(STORAGE_KEY);
+      if(last) frame.src = last;
+      window.addEventListener('error', (e)=> logMistico('Erro: ' + (e.message || 'unknown')));
+      // make monolith visible by default after small delay
+      setTimeout(()=> { document.body.classList.add('active'); sys.toggleSystem(); }, 420);
+    };
+
+    // small accessibility: toggle system on orb click
+    document.querySelectorAll('.orb').forEach(o=> o && o.addEventListener('click', ()=> sys.toggleSystem()));
+
+  </script>
+</body>
+</html>
